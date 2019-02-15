@@ -16,25 +16,32 @@ Ext.define("initiative-team-allocation", {
 
     config: {
         defaultSettings: {
-            portfolioItemType: 'PortfolioItem/Initiative'
         }
     },
     portfolioItemFetch: ['ObjectID','FormattedID','Name'],
 
     launch: function() {
-        this.logger.log('launch settings', this.getSettings());
-
-        if (!this.validateApp()){
-            return;
-        }
-
-        this.setLoading('Initializing Projects...');
-        this.projectUtilities = Ext.create('CA.agile.technicalservices.utils.ProjectUtilities',{
-            listeners: {
-                ready: this.initializeApp,
-                onerror: this.showErrorNotification,
-                scope: this
-            }
+        Rally.data.util.PortfolioItemHelper.loadTypeOrDefault({
+            defaultToLowest: true,
+            loadAllTypes: true,
+            requester: this,
+            success: function (piTypeDef) {
+               this.piTypePath = piTypeDef[1].get('TypePath');
+               console.log("TYPE: ", this.piTypePath);
+               this.logger.log('launch settings', this.getSettings());
+               if (!this.validateApp()){
+                   return;
+               }
+               this.setLoading('Initializing Projects...');
+               this.projectUtilities = Ext.create('CA.agile.technicalservices.utils.ProjectUtilities',{
+                   listeners: {
+                       ready: this.initializeApp,
+                       onerror: this.showErrorNotification,
+                       scope: this
+                   }
+               });       
+            },
+            scope: this
         });
     },
     validateApp: function(){
@@ -95,18 +102,46 @@ Ext.define("initiative-team-allocation", {
                 }
             },
             showRowActionsColumn: false,
-            enableBulkEdit: false
+            scroll: false,
+            enableEditing: false //,
+//            enableBulkEdit: false
         });
     },
     getColumnCfgs: function(){
         var me = this;
-        return [{
-            dataIndex: 'FormattedID',
-            flex: 1
-        },{
-            dataIndex: 'Name',
-            flex: 4
-        },{
+        return [
+            {
+                dataIndex: 'DragAndDropRank',
+                flex: 1
+            },{
+                dataIndex: 'FormattedID',
+                flex: 1
+            },{
+                dataIndex: 'Name',
+                flex: 6
+            },{
+                dataIndex: 'Parent',
+                flex: 4
+            },{
+                dataIndex: 'Milestones',
+                flex: 4
+            },{
+                dataIndex: 'Predecessors',
+                text: 'DEP - Pred',
+                flex: 1
+            },{
+                dataIndex: 'Successors',
+                text: 'DEP - Succ',
+                flex: 1
+            },{
+                dataIndex: 'LeafStoryCount',
+                text: 'Total Story Count',
+                flex: 1
+            },{
+                dataIndex: 'AcceptedLeafStoryCount',
+                text: 'Accepted Story Count',
+                flex: 1
+            },{
             dataIndex: '__projectAllocations',
             text: 'Line of Business',
             renderer: me.lineOfBusinessRenderer,
@@ -123,7 +158,7 @@ Ext.define("initiative-team-allocation", {
             text: 'Percent of Time Spent',
             renderer: me.percentTimeRenderer,
             sortable: false,
-            flex: 1
+            flex: 2
         }];
     },
     lineOfBusinessRenderer: function(v,m,r){
@@ -345,7 +380,7 @@ Ext.define("initiative-team-allocation", {
         Rally.ui.notify.Notifier.showError({message: msg});
     },
     getPortfolioItemType: function(){
-        return this.getSetting('portfolioItemType');
+        return this.piTypePath;
     },
     getPortfolioItemFetch: function() {
         return this.portfolioItemFetch;
